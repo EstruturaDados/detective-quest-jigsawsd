@@ -1,49 +1,62 @@
-# Detective Quest - Mapa da Mansao
+# Detective Quest - Coleta de Pistas
 
 Projeto desenvolvido em linguagem C para uma atividade da disciplina de Analise e Desenvolvimento de Sistemas.
 
 ## Objetivo
 
-O objetivo deste programa e simular a exploracao de uma mansao representada por uma arvore binaria.
+O objetivo deste programa e ampliar o mapa da mansao do projeto Detective Quest, adicionando pistas aos comodos e uma arvore binaria de busca para organizar as pistas coletadas.
 
-O jogador inicia no Hall de entrada e escolhe os caminhos disponiveis para a esquerda ou para a direita. A exploracao continua ate chegar a um comodo que nao possui novos caminhos.
+Durante a exploracao, o jogador percorre a mansao a partir do Hall de entrada e escolhe os caminhos disponiveis. Sempre que uma sala possui uma pista, ela e adicionada automaticamente a arvore de pistas.
+
+Ao final da exploracao, todas as pistas coletadas sao exibidas em ordem alfabetica.
 
 ## Conceitos utilizados
 
 Neste exercicio foram aplicados os seguintes conceitos da linguagem C:
 - `struct`
 - arvore binaria
+- arvore binaria de busca (BST)
 - ponteiros
 - alocacao dinamica com `malloc()`
-- funcoes
-- estruturas condicionais
-- exploracao interativa pelo terminal
+- recursividade
+- comparacao de strings com `strcmp()`
+- modularizacao com funcoes
 - liberacao de memoria com `free()`
 
-## Estrutura usada
+## Estruturas usadas
 
-Cada comodo da mansao e representado pela estrutura `Sala`:
+A estrutura `Sala` representa os comodos da mansao:
 
 ```c
 typedef struct Sala {
     char nome[50];
+    char pista[100];
     struct Sala *esquerda;
     struct Sala *direita;
 } Sala;
 ```
 
-Cada sala possui um nome e dois ponteiros, que podem apontar para os caminhos da esquerda e da direita.
+A estrutura `PistaNode` representa cada pista armazenada na arvore binaria de busca:
+
+```c
+typedef struct PistaNode {
+    char descricao[100];
+    struct PistaNode *esquerda;
+    struct PistaNode *direita;
+} PistaNode;
+```
 
 ## Funcionamento do programa
 
-1. As salas sao criadas automaticamente usando a funcao `criarSala()`.
-2. A arvore binaria e montada manualmente no codigo.
+1. O mapa fixo da mansao e criado no `main()`.
+2. Cada sala recebe um nome e pode possuir uma pista.
 3. O jogador inicia a exploracao no Hall de entrada.
 4. A opcao `e` leva para o caminho da esquerda.
 5. A opcao `d` leva para o caminho da direita.
 6. A opcao `s` encerra a exploracao.
-7. A exploracao termina automaticamente quando o jogador chega a uma sala sem caminhos.
-8. Ao final, a memoria utilizada pela arvore e liberada.
+7. Ao chegar a uma sala com pista, ela e inserida na BST.
+8. Ao final, as pistas coletadas sao exibidas em ordem alfabetica.
+9. A memoria das duas arvores e liberada com `free()`.
 
 ## Mapa da mansao
 
@@ -62,16 +75,22 @@ A arvore utilizada no programa possui a seguinte estrutura:
 ## Funcoes do programa
 
 ### `criarSala`
-Cria uma nova sala usando alocacao dinamica de memoria e armazena seu nome.
+Cria dinamicamente uma sala com nome, pista e ponteiros para os caminhos.
 
-### `explorarSalas`
-Permite que o jogador navegue pela arvore escolhendo os caminhos disponiveis.
+### `inserirPista`
+Insere uma pista na arvore binaria de busca, organizando os dados por ordem alfabetica.
+
+### `explorarSalasComPistas`
+Controla a navegacao do jogador pela mansao e registra as pistas encontradas.
+
+### `exibirPistas`
+Percorre a BST em ordem e exibe as pistas alfabeticamente.
 
 ### `liberarSalas`
-Libera a memoria dos nos da arvore ao final do programa.
+Libera a memoria usada pela arvore da mansao.
 
-### `main`
-Cria as salas, monta o mapa da mansao e inicia a exploracao.
+### `liberarPistas`
+Libera a memoria usada pela arvore de pistas.
 
 ## Codigo-fonte
 
@@ -82,42 +101,79 @@ Cria as salas, monta o mapa da mansao e inicia a exploracao.
 
 typedef struct Sala {
     char nome[50];
+    char pista[100];
     struct Sala *esquerda;
     struct Sala *direita;
 } Sala;
 
-/* Cria uma nova sala usando alocacao dinamica. */
-Sala *criarSala(char nome[]) {
+typedef struct PistaNode {
+    char descricao[100];
+    struct PistaNode *esquerda;
+    struct PistaNode *direita;
+} PistaNode;
+
+Sala *criarSala(char nome[], char pista[]) {
     Sala *novaSala;
 
     novaSala = (Sala *) malloc(sizeof(Sala));
 
     if (novaSala == NULL) {
-        printf("Erro ao alocar memoria.\n");
+        printf("Erro ao alocar memoria para a sala.\n");
         exit(1);
     }
 
     strcpy(novaSala->nome, nome);
+    strcpy(novaSala->pista, pista);
     novaSala->esquerda = NULL;
     novaSala->direita = NULL;
 
     return novaSala;
 }
 
-/* Permite que o jogador explore a arvore binaria. */
-void explorarSalas(Sala *salaAtual) {
+void inserirPista(PistaNode **raiz, char descricao[]) {
+    PistaNode *novo;
+
+    if (*raiz == NULL) {
+        novo = (PistaNode *) malloc(sizeof(PistaNode));
+
+        if (novo == NULL) {
+            printf("Erro ao alocar memoria para a pista.\n");
+            exit(1);
+        }
+
+        strcpy(novo->descricao, descricao);
+        novo->esquerda = NULL;
+        novo->direita = NULL;
+        *raiz = novo;
+    } else if (strcmp(descricao, (*raiz)->descricao) < 0) {
+        inserirPista(&((*raiz)->esquerda), descricao);
+    } else {
+        inserirPista(&((*raiz)->direita), descricao);
+    }
+}
+
+void exibirPistas(PistaNode *raiz) {
+    if (raiz != NULL) {
+        exibirPistas(raiz->esquerda);
+        printf("- %s\n", raiz->descricao);
+        exibirPistas(raiz->direita);
+    }
+}
+
+void explorarSalasComPistas(Sala *salaAtual, PistaNode **pistas) {
     char escolha;
 
     while (salaAtual != NULL) {
         printf("\nVoce esta em: %s\n", salaAtual->nome);
 
-        if (salaAtual->esquerda == NULL && salaAtual->direita == NULL) {
-            printf("Este comodo nao possui mais caminhos.\n");
-            printf("Fim da exploracao.\n");
-            break;
+        if (strlen(salaAtual->pista) > 0) {
+            printf("Pista encontrada: %s\n", salaAtual->pista);
+            inserirPista(pistas, salaAtual->pista);
+        } else {
+            printf("Nenhuma pista encontrada neste comodo.\n");
         }
 
-        printf("Escolha um caminho:\n");
+        printf("\nEscolha um caminho:\n");
 
         if (salaAtual->esquerda != NULL) {
             printf("e - Ir para a esquerda\n");
@@ -144,7 +200,7 @@ void explorarSalas(Sala *salaAtual) {
                 printf("Nao existe caminho para a direita.\n");
             }
         } else if (escolha == 's' || escolha == 'S') {
-            printf("\nExploracao encerrada pelo jogador.\n");
+            printf("\nExploracao encerrada.\n");
             break;
         } else {
             printf("\nOpcao invalida. Escolha e, d ou s.\n");
@@ -152,12 +208,19 @@ void explorarSalas(Sala *salaAtual) {
     }
 }
 
-/* Libera a memoria dos nos da arvore. */
 void liberarSalas(Sala *sala) {
     if (sala != NULL) {
         liberarSalas(sala->esquerda);
         liberarSalas(sala->direita);
         free(sala);
+    }
+}
+
+void liberarPistas(PistaNode *raiz) {
+    if (raiz != NULL) {
+        liberarPistas(raiz->esquerda);
+        liberarPistas(raiz->direita);
+        free(raiz);
     }
 }
 
@@ -170,16 +233,43 @@ int main() {
     Sala *quarto;
     Sala *porao;
 
-    /* Criacao das salas da mansao. */
-    hall = criarSala("Hall de entrada");
-    salaDeEstar = criarSala("Sala de estar");
-    cozinha = criarSala("Cozinha");
-    biblioteca = criarSala("Biblioteca");
-    jardim = criarSala("Jardim");
-    quarto = criarSala("Quarto");
-    porao = criarSala("Porao");
+    PistaNode *arvorePistas = NULL;
 
-    /* Montagem manual da arvore binaria. */
+    hall = criarSala(
+        "Hall de entrada",
+        "Existe uma marca de barro proxima a porta principal."
+    );
+
+    salaDeEstar = criarSala(
+        "Sala de estar",
+        "Um relogio parou exatamente as 22 horas."
+    );
+
+    cozinha = criarSala(
+        "Cozinha",
+        "Foi encontrada uma faca limpa sobre a mesa."
+    );
+
+    biblioteca = criarSala(
+        "Biblioteca",
+        "Um livro sobre a familia desapareceu da estante."
+    );
+
+    jardim = criarSala(
+        "Jardim",
+        "Ha pegadas recentes perto das flores."
+    );
+
+    quarto = criarSala(
+        "Quarto",
+        "Uma janela estava aberta durante a noite."
+    );
+
+    porao = criarSala(
+        "Porao",
+        "Um bilhete menciona a palavra segredo."
+    );
+
     hall->esquerda = salaDeEstar;
     hall->direita = cozinha;
 
@@ -190,13 +280,24 @@ int main() {
     quarto->direita = porao;
 
     printf("====================================\n");
-    printf("       DETECTIVE QUEST - MANSAO\n");
+    printf("   DETECTIVE QUEST - COLETA DE PISTAS\n");
     printf("====================================\n");
     printf("\nA exploracao comeca no Hall de entrada.\n");
 
-    explorarSalas(hall);
+    explorarSalasComPistas(hall, &arvorePistas);
+
+    printf("\n====================================\n");
+    printf("       PISTAS COLETADAS\n");
+    printf("====================================\n");
+
+    if (arvorePistas == NULL) {
+        printf("Nenhuma pista foi coletada.\n");
+    } else {
+        exibirPistas(arvorePistas);
+    }
 
     liberarSalas(hall);
+    liberarPistas(arvorePistas);
 
     return 0;
 }
@@ -204,36 +305,40 @@ int main() {
 
 ## Como compilar
 
-No terminal, use:
+Salve o codigo como:
 
 ```bash
-gcc detective_quest.c -o detective_quest
+detective_quest_aventureiro.c
 ```
 
-Para executar o programa:
+Depois, no terminal do VS Code:
 
 ```bash
-./detective_quest
+gcc detective_quest_aventureiro.c -Wall -Wextra -o detective_quest_aventureiro
+```
+
+Para executar:
+
+```bash
+./detective_quest_aventureiro
 ```
 
 ## Estrutura do projeto
 
 ```bash
 projeto/
-├── detective_quest.c
+├── detective_quest_aventureiro.c
 └── README.md
 ```
 
 ## Observacoes
 
-- A arvore e criada manualmente no codigo, conforme solicitado no desafio.
-- O jogador nao cadastra novas salas durante a execucao.
-- A exploracao comeca sempre no Hall de entrada.
-- A opcao `e` representa o caminho da esquerda.
-- A opcao `d` representa o caminho da direita.
-- A opcao `s` encerra a exploracao.
-- O programa usa `malloc()` para criar as salas e `free()` para liberar a memoria.
-- O codigo utiliza apenas caracteres sem acentuacao para evitar problemas de codificacao no terminal e no GitHub.
+- O mapa da mansao e fixo e criado manualmente no `main()`.
+- As pistas sao inseridas na BST durante a exploracao.
+- A exibicao em ordem usa o percurso esquerda, raiz e direita.
+- O jogador pode sair da exploracao a qualquer momento usando `s`.
+- As duas arvores sao liberadas com `free()` ao final do programa.
+- O codigo utiliza somente caracteres sem acentuacao para evitar problemas de codificacao.
 
 ## Autor
 
